@@ -1,61 +1,183 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel POSTS API with Role-Based Permissions
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel 12 API implementation for a blog platform with role-based permissions, authentication, and background job processing.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- User authentication via Laravel Sanctum
+- Role-based authorization with fine-grained permissions
+- Post management with approval workflow
+- Category management
+- Event-driven architecture with queued jobs
+- API resources for consistent responses
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## System Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2 or higher
+- Composer
+- MySQL or compatible database
+- Redis (optional, for queue processing)
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. Clone the repository:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+git clone https://github.com/saber-younis-dev/core-task
+cd core-task
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+2. Install dependencies:
 
-## Laravel Sponsors
+```bash
+composer install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+3. Create environment file and generate application key:
 
-### Premium Partners
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+4. Configure your database in `.env`
 
-## Contributing
+5. Run migrations and seeders:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+php artisan migrate --seed
+```
 
-## Code of Conduct
+6. Start the queue worker:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+php artisan queue:work
+```
 
-## Security Vulnerabilities
+## Authentication
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+The API uses Laravel Sanctum for authentication. Users can:
+- Register new accounts
+- Login to receive authentication tokens
+- Access protected resources using token authentication
+
+## Authorization
+
+The system implements a robust role-based permission system:
+
+- **Roles**: Admin, Editor, User
+- **Permissions**: Fine-grained permissions like `create_posts`, `approve_posts`, etc.
+- Users can have multiple roles
+- Roles can have multiple permissions
+
+Authorization is handled through route middleware and Gate checks.
+
+## API Endpoints
+
+### Authentication
+- `POST /api/register` - Register new user
+- `POST /api/login` - Login and receive token
+- `GET /api/user` - Get authenticated user profile
+
+### Posts
+- `GET /api/posts` - List all posts (filtered by user permissions)
+- `POST /api/posts` - Create a new post (requires `create_posts` permission)
+- `GET /api/posts/{post}` - View a specific post
+- `PUT /api/posts/{post}` - Update a post (requires ownership or `edit_others_posts` permission)
+- `DELETE /api/posts/{post}` - Delete a post (requires ownership or `delete_posts` permission)
+- `GET /api/posts/pending` - List pending posts (requires `approve_posts` permission)
+- `POST /api/posts/{post}/review` - Review a post (approve/reject) (requires `approve_posts` permission)
+
+### Categories
+- `GET /api/categories` - List all categories
+- `POST /api/categories` - Create category (admin only)
+
+## Model Relationships
+
+- User has many Posts (One-to-Many)
+- User has many Roles, Roles have many Users (Many-to-Many)
+- Role has many Permissions, Permissions have many Roles (Many-to-Many)
+- Post has many Categories, Categories have many Posts (Many-to-Many)
+- Post has many Comments, each Comment belongs to one User (One-to-Many)
+
+## Events and Listeners
+
+- `PostSubmittedForApproval` - Triggered when a user submits a post
+    - Notifies all admin users to review the post
+- `PostApproved` - Triggered when a post is approved
+    - Notifies the author via email
+
+## Background Jobs
+
+- Post approval notifications are processed asynchronously
+- Email notifications are sent via queued jobs
+
+## Security Implementation
+
+The API implements several layers of security:
+
+1. **Authentication** via Laravel Sanctum
+2. **Authorization** using middleware and Gate checks
+3. **Validation** for all incoming requests
+4. **Rate limiting** to prevent abuse
+
+## Sample Users
+
+The seeder creates these default users:
+
+- Admin: admin@example.com (password: password)
+- Editor: editor@example.com (password: password)
+- Regular User: test@example.com (password: password)
+
+## Configuration
+
+The following environment variables can be configured:
+
+```
+QUEUE_CONNECTION=database  # Or redis for production
+MAIL_MAILER=smtp
+MAIL_HOST=mailpit
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+## Laravel 12 Specific Changes
+
+- Middleware is registered in `bootstrap/app.php` instead of `app/Http/Kernel.php` (which no longer exists)
+- Route middleware is applied directly in route definitions rather than controller constructors
+- Authorization is implemented using Gate checks in controllers
+
+## Development Notes
+
+This implementation satisfies all the required tasks:
+
+1. ✅ **API with Authentication**
+    - Laravel Sanctum implementation
+    - API resource controllers with validation
+    - Role-based permissions system
+
+2. ✅ **Event and Listener with Queue**
+    - Registration events for new users
+    - Post approval workflow with notifications
+
+3. ✅ **Complex Model Relationships & Query Scopes**
+    - All required relationship types implemented
+    - Query scopes for filtering posts and users
+
+4. ✅ **Middleware for Role-Based Access**
+    - Custom permission middleware
+    - Database-stored roles and permissions
+    - Gate-based authorization
+
+5. ✅ **Background Job for Post Approval**
+    - Posts require approval before publishing
+    - Queue jobs notify admins about pending posts
+    - Events notify authors when posts are approved
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](LICENSE).
